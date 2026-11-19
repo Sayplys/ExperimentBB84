@@ -27,6 +27,13 @@ All photons go in one circuit, which runs a single time (`shots=1`), like a real
 transmission. The protocol uses only Clifford gates (X, H, measurement), so the Aer
 stabilizer simulator can handle thousands of qubits.
 
+## Noise model (methodology §3.1)
+
+`run_bb84(..., noise_rate=e)` with `e` in 0..0.12 applies a Qiskit `NoiseModel`: half of
+`e` comes from depolarization in the fibre (an `id` gate before Bob) and half from
+readout error in the detectors, so the honest QBER is about `e`. The noise also affects
+Eve's detector. The default `0` keeps the ideal behaviour above.
+
 ## Running
 
 ```bash

@@ -237,12 +237,14 @@ def main() -> None:
     parser.add_argument("--n", type=int, default=200, help="number of photons Alice sends")
     parser.add_argument("--seed", type=int, default=42, help="random seed (for reproducible runs)")
     parser.add_argument("--threshold", type=float, default=0.11, help="maximum tolerated QBER")
+    parser.add_argument("--noise", type=float, default=0.0,
+                        help="intrinsic channel+detector error rate, 0..0.12 (default 0 = ideal)")
     args = parser.parse_args()
 
     FIGURES.mkdir(exist_ok=True)
 
-    res_clean = run_bb84(args.n, eavesdropper=False, threshold=args.threshold, seed=args.seed)
-    res_eve = run_bb84(args.n, eavesdropper=True, threshold=args.threshold, seed=args.seed)
+    res_clean = run_bb84(args.n, eavesdropper=False, threshold=args.threshold, noise_rate=args.noise, seed=args.seed)
+    res_eve = run_bb84(args.n, eavesdropper=True, threshold=args.threshold, noise_rate=args.noise, seed=args.seed)
     report("SCENARIO 1 - No eavesdropper", res_clean)
     report("SCENARIO 2 - Eve intercepts and resends every photon", res_eve)
 

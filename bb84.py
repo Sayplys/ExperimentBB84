@@ -18,9 +18,30 @@ from dataclasses import dataclass, field
 import numpy as np
 from qiskit import ClassicalRegister, QuantumCircuit, QuantumRegister
 from qiskit_aer import AerSimulator
+from qiskit_aer.noise import NoiseModel, ReadoutError, depolarizing_error
 
 BASIS_SYMBOL = {0: "+", 1: "x"}
-_SIMULATOR = AerSimulator(method="stabilizer")
+
+def make_noise_model(noise_rate: float) -> NoiseModel | None:
+    """
+    Noise model of a real optical link, parameterised by one intrinsic error rate.
+
+    The rate is split evenly between the two physical sources, so that the QBER of
+    an honest transmission is ~`noise_rate` (exactly e - 2(e/2)^2, e.g. 11.8 % for 12 %):
+      * channel (fibre): depolarizing error on the `id` gate that models the
+        propagation. Qiskit's depolarizing parameter lam replaces the qubit by the
+        maximally mixed state with probability lam, which flips a measurement in
+        either basis with probability lam/2. We want a flip of noise_rate/2, so
+        lam = noise_rate.
+      * detector (Bob): symmetric readout error, a flip with probability noise_rate/2.
+    """
+    if noise_rate <= 0:
+        return None
+    model = NoiseModel()
+    model.add_all_qubit_quantum_error(depolarizing_error(noise_rate, 1), ["id"])
+    flip = noise_rate / 2
+    model.add_all_qubit_readout_error(ReadoutError([[1 - flip, flip], [flip, 1 - flip]]))
+    return model
 
 
 # --------------------------------------------------------------------------- #
@@ -81,15 +102,22 @@ def build_circuit(alice_bits, alice_bases, bob_bases, eve_bases=None, eve_mask=N
                 intercept_resend(qc, q[i], eve_c[i], eve_bases[i])
         qc.barrier(label="Eve → Bob")
 
+    # Last stretch of fibre before Bob's detector. The explicit identity gate is where
+    # the noise model attaches the depolarizing error (no-op when noise is off).
+    for i in range(n):
+        qc.id(q[i])
+    qc.barrier(label="fibre → Bob")
+
     qc.add_register(bob_c)
     for i in range(n):
         measure(qc, q[i], bob_c[i], bob_bases[i])
     return qc
 
 
-def run_circuit(qc: QuantumCircuit, seed=None):
+def run_circuit(qc: QuantumCircuit, seed=None, noise_rate: float = 0.0):
     """Run once and return {register_name: np.array of bits indexed by qubit}."""
-    result = _SIMULATOR.run(qc, shots=1, memory=True, seed_simulator=seed).result()
+    sim = AerSimulator(method="stabilizer", noise_model=make_noise_model(noise_rate))
+    result = sim.run(qc, shots=1, memory=True, seed_simulator=seed).result()
     # Qiskit prints registers in reverse order of creation, separated by spaces,
     # and each register's bit 0 is the rightmost character.
     chunks = result.get_memory()[0].split(" ")
@@ -115,6 +143,7 @@ class BB84Result:
     key_idx: np.ndarray               # sifted positions kept as the secret key
     qber: float                       # error rate measured on the check bits
     threshold: float
+    noise_rate: float
     circuit: QuantumCircuit = field(repr=False)
 
     @property
@@ -143,6 +172,7 @@ def run_bb84(
     intercept_rate: float = 1.0,
     check_fraction: float = 0.5,
     threshold: float = 0.11,
+    noise_rate: float = 0.0,
     seed: int | None = None,
 ) -> BB84Result:
     """
@@ -150,7 +180,11 @@ def run_bb84(
 
     intercept_rate : fraction of photons Eve intercepts (if eavesdropper=True).
     check_fraction : fraction of the sifted key sacrificed to estimate the error rate.
-    threshold      : maximum tolerated QBER; above it Alice and Bob abort.
+    threshold      : maximum tolerated QBER; above it Alice and Bob abort (11 %, the
+                     Shor-Preskill bound).
+    noise_rate     : intrinsic channel + detector error rate, 0..0.12 (see
+                     `make_noise_model`). Note the readout error also affects Eve's
+                     detector: she is not a perfect eavesdropper.
     """
     rng = np.random.default_rng(seed)
 
@@ -171,7 +205,7 @@ def run_bb84(
     # 4. Bob measures (the circuit runs Alice -> [Eve] -> Bob).
 
     qc = build_circuit(alice_bits, alice_bases, bob_bases, eve_bases, eve_mask)
-    regs = run_circuit(qc, seed=None if seed is None else int(rng.integers(2**31)))
+    regs = run_circuit(qc, seed=None if seed is None else int(rng.integers(2**31)), noise_rate=noise_rate)
     bob_bits = regs["bob"]
     eve_bits = None
     if eavesdropper:
@@ -202,6 +236,7 @@ def run_bb84(
         key_idx=key_idx,
         qber=float(qber),
         threshold=threshold,
+        noise_rate=noise_rate,
         circuit=qc,
     )
 
