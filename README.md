@@ -34,6 +34,18 @@ stabilizer simulator can handle thousands of qubits.
 readout error in the detectors, so the honest QBER is about `e`. The noise also affects
 Eve's detector. The default `0` keeps the ideal behaviour above.
 
+## ML-KEM-768 (methodology §3.2)
+
+`mlkem.py` runs KeyGen / Encaps / Decaps through liboqs (`run_mlkem(tamper_bits=k)`),
+and reports key/ciphertext sizes, per-step times and whether both sides got the same
+256-bit secret. It needs the native `liboqs` library (>= 0.16) installed in `~/_oqs`,
+where `liboqs-python` looks for it:
+
+```bash
+cmake -S liboqs -B build -GNinja -DCMAKE_INSTALL_PREFIX=$HOME/_oqs -DBUILD_SHARED_LIBS=ON \
+      -DOQS_BUILD_ONLY_LIB=ON -DOQS_DIST_BUILD=ON && cmake --build build && cmake --install build
+```
+
 ## Running
 
 ```bash
