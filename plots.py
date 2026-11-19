@@ -141,7 +141,9 @@ def main():
 
     fig_qber(rows, n, runs)
     fig_useful_rate(rows, n, runs)
-    bars(rows, "bytes_total", "Bandwidth: ML-KEM sends about 24x more bytes", "Bytes on the channel per exchange",
+    ratio = stat(rows, "bytes_total", protocol="ML-KEM-768", scenario="baseline")[0] / \
+        stat(rows, "bytes_total", protocol="BB84", scenario="baseline")[0]
+    bars(rows, "bytes_total", f"Bandwidth: ML-KEM sends about {ratio:.1f}x more bytes", "Bytes on the channel per exchange",
          "cmp_bytes.png", lambda v: f"{v:,.0f} B")
     bars(rows, "time_ms", "Processing time per exchange (log scale)", "Wall time (ms)", "cmp_time.png",
          lambda v: f"{v:.2g} ms", log=True,

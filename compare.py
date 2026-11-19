@@ -13,8 +13,8 @@ Metrics per run (one CSV row):
   time_ms      wall time of the whole exchange. BB84 is an Aer *simulation* of the
                photons, not real hardware, so it must not be read as a speed comparison.
 
-    .venv/bin/python compare.py                 # 5 runs x 200 photons
-    .venv/bin/python compare.py --n 2000 --runs 20
+    .venv/bin/python compare.py                 # 20 runs x 2000 photons
+    .venv/bin/python compare.py --n 200 --runs 5   # the small sample of the methodology text
 """
 
 import argparse
@@ -92,8 +92,8 @@ def summarize(rows: list[dict]) -> None:
 
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--n", type=int, default=200, help="photons per BB84 run")
-    p.add_argument("--runs", type=int, default=5, help="independent runs per scenario")
+    p.add_argument("--n", type=int, default=2000, help="photons per BB84 run")
+    p.add_argument("--runs", type=int, default=20, help="independent runs per scenario")
     p.add_argument("--out", default="results/comparison.csv")
     a = p.parse_args()
 

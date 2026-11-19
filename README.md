@@ -49,25 +49,28 @@ cmake -S liboqs -B build -GNinja -DCMAKE_INSTALL_PREFIX=$HOME/_oqs -DBUILD_SHARE
 ## Comparison BB84 vs ML-KEM-768 (methodology §3.3)
 
 ```bash
-.venv/bin/python compare.py     # 5 runs x 200 photons -> results/comparison.csv + summary table
+.venv/bin/python compare.py     # 20 runs x 2000 photons -> results/comparison.csv + summary table
 .venv/bin/python plots.py       # figures/cmp_*.png
 ```
 
 Scenarios: BB84 at 0/3/6/9/12 % noise, with and without an intercept-resend Eve; ML-KEM
-baseline, passive Eve and an active Eve that flips 1 ciphertext bit. Use `--n` and
-`--runs` for larger samples.
+baseline, passive Eve and an active Eve that flips 1 ciphertext bit. The methodology text
+specifies 5 runs of 200 photons (`compare.py --n 200 --runs 5`); the default is a larger
+sample because with 200 photons only about 50 bits are compared and the QBER is too noisy.
 
-| Metric (5 runs of 200 photons) | BB84 | ML-KEM-768 |
+| Metric (20 runs of 2000 photons) | BB84 | ML-KEM-768 |
 |---|---|---|
-| Useful-bit rate (secret bits / bits sent) | 0.255 (about 51 key bits) | 0.014 (256 bits / 2272 B) |
-| Bytes per exchange | about 96 (200 qubits + sifting messages) | 2272 |
-| Time per exchange | about 7 ms (Aer simulation) | about 0.07 ms |
-| Under attack | QBER about 25-27 %: aborts in 100 % of runs | secrets differ in 100 % of runs |
+| Useful-bit rate (secret bits / bits sent) | 0.25 (about 500 key bits) | 0.014 (256 bits / 2272 B) |
+| Bytes per exchange | about 940 (2000 qubits + sifting messages) | 2272 |
+| Time per exchange | about 260 ms (Aer simulation) | about 0.05 ms |
+| Under attack | QBER 25-31 %: aborts in 100 % of runs | secrets differ in 100 % of runs |
+| Honest QBER at 12 % noise | 11.6 %, right at the 11 % threshold: 55 % of runs abort | not affected |
 
 Caveats: the BB84 time is a simulation of the photons, not real hardware, so it is not a
-speed comparison. With 200 photons only about 50 bits are compared, so the QBER is noisy:
-at 12 % noise, 1 of 5 honest runs aborted. ML-KEM does not report the failure itself
-(implicit rejection): the parties end with different secrets and find out when using the key.
+speed comparison. Below 12 % noise no honest run aborts; at 12 % the intrinsic error is as
+large as the threshold, so the abort is a coin flip. ML-KEM does not report the failure
+itself (implicit rejection): the parties end with different secrets and find out when
+using the key.
 
 Figures: `cmp_qber_vs_noise.png`, `cmp_useful_rate.png`, `cmp_bytes.png`, `cmp_time.png`.
 
