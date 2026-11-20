@@ -79,7 +79,7 @@ Figures: `cmp_qber_vs_noise.png`, `cmp_useful_rate.png`, `cmp_bytes.png`, `cmp_t
 ```bash
 python -m venv .venv
 .venv/bin/pip install -r requirements.txt
-.venv/bin/python main.py              # 200 photons, seed 42
+.venv/bin/python main.py              # 2000 photons, seed 42 (sweep: 20 runs per point)
 .venv/bin/python main.py --n 1000 --seed 7
 ```
 

@@ -21,6 +21,10 @@ from bb84 import BASIS_SYMBOL, build_circuit, detection_probability, run_bb84
 FIGURES = Path(__file__).parent / "figures"
 
 
+RUNS = 20          # independent runs per experiment (same as compare.py)
+N_PHOTONS = 2000   # photons per BB84 run (same as compare.py)
+
+
 def bits_str(bits) -> str:
     return "".join("." if b < 0 else str(b) for b in bits)
 
@@ -81,10 +85,9 @@ def save_circuits(seed: int) -> None:
         plt.close("all")
 
 
-def sweep_intercept_rate(n: int, seed: int, threshold: float) -> None:
+def sweep_intercept_rate(n: int, seed: int, threshold: float, trials: int = RUNS) -> None:
     """QBER as a function of the fraction of photons Eve intercepts."""
     rates = np.linspace(0, 1, 11)
-    trials = 5
     qbers = np.array([
         [run_bb84(n, eavesdropper=True, intercept_rate=r, seed=seed + 100 * t + i).qber for t in range(trials)]
         for i, r in enumerate(rates)
@@ -234,7 +237,7 @@ def plot_scenarios(res_clean, res_eve, limit: int = 20) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--n", type=int, default=200, help="number of photons Alice sends")
+    parser.add_argument("--n", type=int, default=N_PHOTONS, help="number of photons Alice sends")
     parser.add_argument("--seed", type=int, default=42, help="random seed (for reproducible runs)")
     parser.add_argument("--threshold", type=float, default=0.11, help="maximum tolerated QBER")
     parser.add_argument("--noise", type=float, default=0.0,
