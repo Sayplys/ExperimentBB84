@@ -16,6 +16,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
+from labels import set_lang, tr
 from bb84 import BASIS_SYMBOL, build_circuit, detection_probability, run_bb84
 
 FIGURES = Path(__file__).parent / "figures"
@@ -98,16 +99,16 @@ def sweep_intercept_rate(n: int, seed: int, threshold: float, trials: int = RUNS
     fig.patch.set_facecolor(surface)
     ax.set_facecolor(surface)
 
-    ax.plot(rates, rates / 4, color="#eb6834", lw=2, ls="--", label="Theory: QBER = rate / 4")
+    ax.plot(rates, rates / 4, color="#eb6834", lw=2, ls="--", label=tr("sweep.theory"))
     ax.errorbar(rates, qbers.mean(axis=1), yerr=qbers.std(axis=1), fmt="o", ms=7, color="#2a78d6",
                 ecolor="#2a78d6", elinewidth=1.5, capsize=3, mec=surface, mew=2,
-                label=f"Simulated (mean ± std, {trials} runs of {n} photons)")
+                label=tr("sweep.sim", trials=trials, n=n))
     ax.axhline(threshold, color=muted, lw=1, ls=":")
-    ax.text(0.01, threshold + 0.006, f"Abort threshold ({threshold:.0%})", color=muted, fontsize=9)
+    ax.text(0.01, threshold + 0.006, tr("threshold", t=threshold), color=muted, fontsize=9)
 
-    ax.set_xlabel("Fraction of photons intercepted by Eve", color=ink)
-    ax.set_ylabel("QBER (error rate on compared bits)", color=ink)
-    ax.set_title("BB84: eavesdropping leaves a measurable error rate", color=ink, loc="left")
+    ax.set_xlabel(tr("sweep.x"), color=ink)
+    ax.set_ylabel(tr("sweep.y"), color=ink)
+    ax.set_title(tr("sweep.title"), color=ink, loc="left")
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f"{y:.0%}"))
     ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{x:.0%}"))
     ax.set_xlim(-0.03, 1.03)
@@ -134,8 +135,8 @@ def plot_scenarios(res_clean, res_eve, limit: int = 20) -> None:
     blue, orange = "#2a78d6", "#eb6834"
     sifted_bg, eve_bg, error_bg, error_ink = "#deebfb", "#fbe3d8", "#f6cfcf", "#b42b2b"
     kets = {(0, 0): "|0⟩", (1, 0): "|1⟩", (0, 1): "|+⟩", (1, 1): "|−⟩"}
-    rows = ["Alice: bit", "Alice: basis", "Photon sent", "Eve: basis", "Eve: result",
-            "Bob: basis", "Bob: result", "Same basis?", "Bits agree?"]
+    rows = [tr(k) for k in ("row.alice_bit", "row.alice_basis", "row.photon", "row.eve_basis", "row.eve_result",
+                            "row.bob_basis", "row.bob_result", "row.same_basis", "row.agree")]
     label_w = 3.2  # width of the row-label column, in cell units
 
     fig = plt.figure(figsize=(15, 9.5))
@@ -159,7 +160,7 @@ def plot_scenarios(res_clean, res_eve, limit: int = 20) -> None:
             ax.text(i + 0.5, -0.85, str(i + 1), ha="center", va="center", color=muted, fontsize=8)
 
             cells = [str(a_bit), BASIS_SYMBOL[a_basis], kets[(a_bit, a_basis)], None, None,
-                     BASIS_SYMBOL[b_basis], str(b_bit), "Y" if sifted else "", ""]
+                     BASIS_SYMBOL[b_basis], str(b_bit), tr("yes") if sifted else "", ""]
             if res.eve_bases is not None and res.eve_mask[i]:
                 cells[3], cells[4] = BASIS_SYMBOL[res.eve_bases[i]], str(res.eve_bits[i])
                 if res.eve_bases[i] != a_basis:  # wrong basis: Eve disturbed this photon
@@ -182,15 +183,14 @@ def plot_scenarios(res_clean, res_eve, limit: int = 20) -> None:
         for y in (3, 5, 7):  # separate Alice / Eve / Bob / public discussion
             ax.plot([-label_w + 0.3, m], [y, y], color=grid, lw=1)
         if res.eve_bases is None:
-            ax.text(m / 2, 4, "no eavesdropper on the channel", ha="center", va="center",
+            ax.text(m / 2, 4, tr("no_eve_note"), ha="center", va="center",
                     color=muted, fontsize=11, style="italic")
 
         errors = int(np.sum(res.alice_bits[res.sifted_idx] != res.bob_bits[res.sifted_idx]))
-        ax.text(m, -1.55, f"All {res.n} photons: {len(res.sifted_idx)} with the same basis, "
-                          f"{errors} of them disagree", ha="right", va="center", color=muted, fontsize=10)
+        ax.text(m, -1.55, tr("table.summary", n=res.n, s=len(res.sifted_idx), e=errors), ha="right", va="center", color=muted, fontsize=10)
 
-    draw_table(fig.add_subplot(gs[0, 0]), res_clean, "Scenario 1: no eavesdropper", blue)
-    draw_table(fig.add_subplot(gs[1, 0]), res_eve, "Scenario 2: Eve intercepts and resends every photon", orange)
+    draw_table(fig.add_subplot(gs[0, 0]), res_clean, tr("scn1"), blue)
+    draw_table(fig.add_subplot(gs[1, 0]), res_eve, tr("scn2"), orange)
 
     # QBER summary, shared by both scenarios
     ax = fig.add_subplot(gs[:, 1].subgridspec(2, 1, height_ratios=[10, 1.2])[0])
@@ -198,21 +198,21 @@ def plot_scenarios(res_clean, res_eve, limit: int = 20) -> None:
     qbers = [res_clean.qber, res_eve.qber]
     ax.bar([0, 1], qbers, width=0.6, color=[blue, orange])
     ax.axhline(res_clean.threshold, color=muted, lw=1, ls=":")
-    ax.text(-0.5, res_clean.threshold + 0.004, f"Abort threshold ({res_clean.threshold:.0%})",
+    ax.text(-0.5, res_clean.threshold + 0.004, tr("threshold", t=res_clean.threshold),
             ha="left", va="bottom", color=muted, fontsize=9)
     ax.axhline(0.25, color=muted, lw=1, ls="--", alpha=0.6)
-    ax.text(-0.5, 0.256, "Theory with Eve: 25%", ha="left", va="bottom", color=muted, fontsize=9)
+    ax.text(-0.5, 0.256, tr("theory_eve"), ha="left", va="bottom", color=muted, fontsize=9)
     for x, (q, res) in enumerate(zip(qbers, (res_clean, res_eve))):
         ax.text(x, q + 0.005, f"{q:.1%}", ha="center", va="bottom", color=ink, fontsize=12, fontweight="bold")
-        verdict = "✗ Aborted\nkey discarded" if res.aborted else "✓ Accepted\nkey is secret"
-        ax.text(x, -0.012, f"Scenario {x + 1}", ha="center", va="top", color=ink, fontsize=11, fontweight="bold")
+        verdict = tr("aborted") if res.aborted else tr("accepted")
+        ax.text(x, -0.012, tr("scn_n", i=x + 1), ha="center", va="top", color=ink, fontsize=11, fontweight="bold")
         ax.text(x, -0.03, verdict, ha="center", va="top", color=ink, fontsize=10)
     ax.set_xticks([])
     ax.set_xlim(-0.55, 1.55)
     ax.set_ylim(0, 0.33)
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f"{y:.0%}"))
     ax.tick_params(axis="y", colors=muted)
-    ax.set_title("Error rate (QBER)",
+    ax.set_title(tr("qber.title"),
                  loc="left", color=ink, fontsize=12, fontweight="bold")
     ax.grid(axis="y", color=grid, lw=0.8)
     ax.set_axisbelow(True)
@@ -221,14 +221,13 @@ def plot_scenarios(res_clean, res_eve, limit: int = 20) -> None:
     ax.spines["bottom"].set_color(muted)
 
     fig.legend(
-        handles=[Patch(color=sifted_bg, label="Same basis: bit kept after sifting"),
-                 Patch(color=eve_bg, label="Eve used the wrong basis (photon disturbed)"),
-                 Patch(color=error_bg, label="Bob's bit differs from Alice's (error)")],
+        handles=[Patch(color=sifted_bg, label=tr("leg.sifted")),
+                 Patch(color=eve_bg, label=tr("leg.eve")),
+                 Patch(color=error_bg, label=tr("leg.error"))],
         loc="lower left", bbox_to_anchor=(0.02, 0.0), ncol=3, frameon=False, fontsize=10, labelcolor=ink,
     )
-    fig.text(0.02, 0.965, "BB84 with and without an eavesdropper", color=ink, fontsize=16, fontweight="bold")
-    fig.text(0.02, 0.94, f"First {min(limit, res_clean.n)} photons of {res_clean.n}, with the same "
-                         "Alice and Bob choices in both scenarios.   + rectilinear basis,  x diagonal basis",
+    fig.text(0.02, 0.965, tr("main.title"), color=ink, fontsize=16, fontweight="bold")
+    fig.text(0.02, 0.94, tr("main.sub", m=min(limit, res_clean.n), n=res_clean.n),
              color=muted, fontsize=10.5)
     fig.subplots_adjust(left=0.02, right=0.98, top=0.88, bottom=0.07)
     fig.savefig(FIGURES / "scenarios_comparison.png", dpi=150)
@@ -242,9 +241,11 @@ def main() -> None:
     parser.add_argument("--threshold", type=float, default=0.11, help="maximum tolerated QBER")
     parser.add_argument("--noise", type=float, default=0.0,
                         help="intrinsic channel+detector error rate, 0..0.12 (default 0 = ideal)")
+    parser.add_argument("--lang", choices=("en", "pt"), default="en", help="figure language (pt -> figures/pt/)")
     args = parser.parse_args()
 
-    FIGURES.mkdir(exist_ok=True)
+    global FIGURES
+    FIGURES = set_lang(args.lang)
 
     res_clean = run_bb84(args.n, eavesdropper=False, threshold=args.threshold, noise_rate=args.noise, seed=args.seed)
     res_eve = run_bb84(args.n, eavesdropper=True, threshold=args.threshold, noise_rate=args.noise, seed=args.seed)

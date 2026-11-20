@@ -83,6 +83,8 @@ python -m venv .venv
 .venv/bin/python main.py --n 1000 --seed 7
 ```
 
+Add `--lang pt` to `main.py` or `plots.py` for Portuguese legends (saved in `figures/pt/`).
+
 The output prints a step-by-step table of the first photons and a summary for each
 scenario. It also saves these images to `figures/`:
 

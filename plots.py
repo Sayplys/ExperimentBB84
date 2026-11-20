@@ -5,7 +5,7 @@ Reads results/comparison.csv (written by compare.py) and writes figures/cmp_*.pn
 Colour = protocol (blue BB84, orange ML-KEM); line style = scenario (solid baseline,
 dashed under attack), so colour never has to carry two meanings.
 
-    .venv/bin/python plots.py
+    .venv/bin/python plots.py [--lang pt]
 """
 
 import argparse
@@ -17,6 +17,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+
+from labels import set_lang, tr
 
 SURFACE, INK, MUTED, GRID = "#fcfcfb", "#0b0b0b", "#52514e", "#e4e3df"
 BB84_C, KEM_C = "#2a78d6", "#eb6834"
@@ -77,15 +79,15 @@ def line(ax, x, m, s, color, ls, label, hollow=False):
 
 def fig_qber(rows, n, runs):
     fig, ax = plt.subplots(figsize=(7, 4.2))
-    for scen, ls, hollow, label in (("baseline", "-", False, "BB84, no Eve"),
-                                    ("Eve", "--", True, "BB84, Eve intercept-resend")):
+    for scen, ls, hollow, label in (("baseline", "-", False, tr("bb84_no_eve")),
+                                    ("Eve", "--", True, tr("bb84_eve_ir"))):
         x, m, s = series(rows, "qber", "BB84", scen)
         line(ax, x, m, s, BB84_C, ls, label, hollow)
-    ax.plot([0, 0.12], [0, 0.12], color=MUTED, lw=1, ls=":", label="Noise rate (ideal QBER)")
+    ax.plot([0, 0.12], [0, 0.12], color=MUTED, lw=1, ls=":", label=tr("noise_ideal"))
     ax.axhline(THRESHOLD, color=MUTED, lw=1, ls=":")
-    ax.text(0.0005, THRESHOLD + 0.006, "Abort threshold (11%)", color=MUTED, fontsize=9)
-    style(ax, "BB84: Eve is visible well above the channel noise", "Intrinsic noise rate",
-          f"QBER (mean ± std, {runs} runs of {n} photons)", pct_y=True)
+    ax.text(0.0005, THRESHOLD + 0.006, tr("cmp.threshold"), color=MUTED, fontsize=9)
+    style(ax, tr("cmp.qber.title"), tr("cmp.qber.x"),
+          tr("cmp.qber.y", runs=runs, n=n), pct_y=True)
     ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{x:.0%}"))
     ax.set_ylim(0, 0.4)
     ax.legend(frameon=False, loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=3, labelcolor=INK, fontsize=9)
@@ -94,15 +96,15 @@ def fig_qber(rows, n, runs):
 
 def fig_useful_rate(rows, n, runs):
     fig, ax = plt.subplots(figsize=(7, 4.2))
-    for scen, ls, hollow, label in (("baseline", "-", False, "BB84, no Eve"),
-                                    ("Eve", "--", True, "BB84, Eve")):
+    for scen, ls, hollow, label in (("baseline", "-", False, tr("bb84_no_eve")),
+                                    ("Eve", "--", True, tr("bb84_eve"))):
         x, m, s = series(rows, "useful_rate", "BB84", scen)
         line(ax, x, m, s, BB84_C, ls, label, hollow)
-    for scen, ls, label in (("baseline", "-", "ML-KEM-768, no Eve"), ("active Eve", "--", "ML-KEM-768, Eve flips a bit")):
+    for scen, ls, label in (("baseline", "-", tr("kem_no_eve")), ("active Eve", "--", tr("kem_eve"))):
         m, _ = stat(rows, "useful_rate", protocol="ML-KEM-768", scenario=scen)
         ax.axhline(m, color=KEM_C, lw=2, ls=ls, label=f"{label} ({m:.3f})")
-    style(ax, "Useful-bit rate: BB84 yields more key per bit sent", "Intrinsic noise rate (BB84 only)",
-          f"Secret bits / bits sent (mean ± std, {runs} runs)")
+    style(ax, tr("cmp.rate.title"), tr("cmp.rate.x"),
+          tr("cmp.rate.y", runs=runs))
     ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{x:.0%}"))
     ax.set_ylim(-0.02, 0.4)
     ax.legend(frameon=False, loc="upper right", labelcolor=INK, fontsize=9)
@@ -133,9 +135,11 @@ def bars(rows, key, title, xlabel, name, fmt, log=False, note=None):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--csv", default="results/comparison.csv")
+    p.add_argument("--lang", choices=("en", "pt"), default="en", help="figure language (pt -> figures/pt/)")
     a = p.parse_args()
     rows = load(Path(a.csv))
-    FIGURES.mkdir(exist_ok=True)
+    global FIGURES
+    FIGURES = set_lang(a.lang)
     runs = len({r["run"] for r in rows})
     n = round(float(next(r["channel_bits"] for r in rows if r["protocol"] == "BB84")))
 
@@ -143,11 +147,11 @@ def main():
     fig_useful_rate(rows, n, runs)
     ratio = stat(rows, "bytes_total", protocol="ML-KEM-768", scenario="baseline")[0] / \
         stat(rows, "bytes_total", protocol="BB84", scenario="baseline")[0]
-    bars(rows, "bytes_total", f"Bandwidth: ML-KEM sends about {ratio:.1f}x more bytes", "Bytes on the channel per exchange",
+    bars(rows, "bytes_total", tr("cmp.bytes.title", ratio=ratio), tr("cmp.bytes.x"),
          "cmp_bytes.png", lambda v: f"{v:,.0f} B")
-    bars(rows, "time_ms", "Processing time per exchange (log scale)", "Wall time (ms)", "cmp_time.png",
+    bars(rows, "time_ms", tr("cmp.time.title"), tr("cmp.time.x"), "cmp_time.png",
          lambda v: f"{v:.2g} ms", log=True,
-         note="BB84 = Qiskit Aer simulation of the photons, not real hardware: not a speed comparison.")
+         note=tr("cmp.time.note"))
 
 
 if __name__ == "__main__":
